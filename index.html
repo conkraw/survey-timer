@@ -1,92 +1,202 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Survey Timer</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial, sans-serif; text-align:center; padding:40px; max-width:680px; margin:0 auto; }
-    label,input,button { font-size: 1rem; }
-    #timer { font-size: 3rem; margin: 16px 0 24px; }
-    #startBtn { padding: 10px 18px; cursor:pointer; }
-    .warn { color: #b33; }
-    .row { margin: 10px 0; }
-    #urlBox { width: 100%; padding: 8px; }
+    :root { --headerH: 64px; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:#111; }
+    .bar {
+      position: sticky; top: 0; z-index: 1000; height: var(--headerH);
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      background: #f8f9fa; border-bottom: 1px solid #e5e7eb; padding: 8px 12px;
+      font-weight: 600;
+    }
+    .warn { background: #fff3cd; color: #7a5a00; }
+    .time { font-variant-numeric: tabular-nums; font-size: 1.25rem; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    #setup { max-width: 720px; margin: 32px auto; text-align: center; }
+    #setup input[type="url"], #setup input[type="number"] {
+      width: 100%; padding: 10px 12px; font-size: 1rem; box-sizing: border-box; margin: 6px 0 12px;
+    }
+    button {
+      padding: 10px 16px; font-size: 1rem; cursor: pointer; border-radius: 8px;
+      border: 1px solid #cbd5e1; background: #fff; font-weight: 600;
+    }
+    button.primary { background: #111827; color: #fff; border-color: #111827; }
+    .hint { opacity: .75; font-size: .9rem; }
+
+    /* iframe area fills viewport under sticky bar */
+    #frameWrap { height: calc(100vh - var(--headerH)); }
+    #surveyFrame { width: 100%; height: 100%; border: 0; background: #fff; }
+
+    .fallback {
+      display: none; text-align: center; padding: 18px; border: 1px dashed #d1d5db; border-radius: 10px; margin: 12px 0;
+      background: #fafafa;
+    }
+    .overlay {
+      position: fixed; inset: var(--headerH) 0 0 0; background: rgba(255,255,255,0.96);
+      display: none; align-items: center; justify-content: center; text-align: center; padding: 24px; z-index: 1001;
+    }
+    .overlay h2 { margin-top: 0; }
   </style>
 </head>
 <body>
-  <h1>Please complete the survey</h1>
-
-  <div id="setup">
-    <p class="row">Paste your REDCap survey link:</p>
-    <input id="urlBox" type="url" placeholder="https://your-redcap.edu/surveys/?s=ABC123">
-    <div class="row">
-      <label>Minutes: <input id="minsBox" type="number" value="15" min="1" step="1"></label>
-    </div>
-    <button id="prepBtn">Load</button>
-    <p style="font-size:.9rem;opacity:.8">Tip: you can prefill this page with <code>?u=...</code> and <code>&m=15</code>.</p>
+  <!-- Sticky timer bar -->
+  <div id="bar" class="bar" role="status" aria-live="polite">
+    <div>Time remaining:</div>
+    <div id="clock" class="time">--:--</div>
+    <div id="msg" class="hint"></div>
   </div>
 
-  <div id="run" style="display:none;">
-    <p>You will have <strong id="mins">15</strong> minutes to finish.</p>
-    <div id="timer">15:00</div>
-    <button id="startBtn">Start Survey</button>
-    <p>The survey will open in a new tab.</p>
+  <div class="wrap">
+    <!-- Setup screen (shown if no ?u=...) -->
+    <div id="setup">
+      <h1>Start timed survey</h1>
+      <p>Paste your REDCap survey link and set minutes.</p>
+      <input id="urlBox" type="url" placeholder="https://redcap.your.edu/surveys/?s=ABC123" />
+      <label>Minutes:
+        <input id="minsBox" type="number" min="1" step="1" value="15" />
+      </label>
+      <div style="margin-top:10px;">
+        <button id="startBtn" class="primary">Start</button>
+      </div>
+      <p class="hint">Tip: prefill this page using <code>?u=...</code> and <code>&m=15</code>.</p>
+    </div>
+
+    <!-- Running view -->
+    <div id="run" style="display:none;">
+      <div id="frameWrap">
+        <iframe id="surveyFrame" title="REDCap Survey"></iframe>
+      </div>
+
+      <!-- Fallback if iframe is blocked by X-Frame-Options -->
+      <div id="fallback" class="fallback">
+        <p><strong>Your REDCap server blocked embedding in an iframe.</strong></p>
+        <p>Click below to open the survey in this tab:</p>
+        <p><button id="openHere" class="primary">Open survey here</button></p>
+        <p class="hint">This keeps the same-window experience even when embedding is disallowed.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time-up overlay -->
+  <div id="overlay" class="overlay" aria-modal="true" role="dialog">
+    <div>
+      <h2>Time is up</h2>
+      <p>Please submit your survey now. If the survey is still open, switch to that view and submit.</p>
+      <p><button id="dismiss">OK</button></p>
+    </div>
   </div>
 
   <script>
-    function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
-    var SURVEY_URL = qs('u');
-    var TOTAL_MINUTES = parseInt(qs('m')||'15',10);
-
-    var setup = document.getElementById('setup');
-    var run = document.getElementById('run');
-    var urlBox = document.getElementById('urlBox');
-    var minsBox = document.getElementById('minsBox');
-    var timerEl = document.getElementById('timer');
-    var minsEl = document.getElementById('mins');
-    var prepBtn = document.getElementById('prepBtn');
-    var startBtn = document.getElementById('startBtn');
-
-    function fmt(s){ var m=Math.floor(s/60), ss=s%60; return m+':'+String(ss).padStart(2,'0'); }
-
-    function ready(url, mins){
-      SURVEY_URL = url; TOTAL_MINUTES = mins;
-      setup.style.display = 'none';
-      run.style.display = '';
-      minsEl.textContent = TOTAL_MINUTES;
-      timerEl.textContent = fmt(TOTAL_MINUTES*60);
+    // ----------- helpers -----------
+    function qs(name){
+      const m = location.search.match(new RegExp('[?&]'+name+'=([^&]+)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    function fmt(secs){
+      secs = Math.max(0, secs|0);
+      const m = Math.floor(secs/60), s = secs%60;
+      return m + ':' + String(s).padStart(2,'0');
     }
 
-    prepBtn.addEventListener('click', function(){
-      if (!urlBox.value) { alert('Paste your REDCap survey link.'); return; }
-      ready(urlBox.value.trim(), Math.max(1, parseInt(minsBox.value||'15',10)));
-    });
+    // ----------- state -----------
+    const urlParam = qs('u');
+    const minutesParam = parseInt(qs('m') || '15', 10);
+    let SURVEY_URL = '';
+    let TOTAL_MINUTES = isNaN(minutesParam) ? 15 : Math.max(1, minutesParam);
+    let endMs = 0, tickHandle = null;
 
-    if (SURVEY_URL) {
-      urlBox.value = SURVEY_URL;
-      if (!isNaN(TOTAL_MINUTES)) minsBox.value = TOTAL_MINUTES;
-      ready(SURVEY_URL, TOTAL_MINUTES);
-    }
+    // ----------- elements -----------
+    const setup = document.getElementById('setup');
+    const urlBox = document.getElementById('urlBox');
+    const minsBox = document.getElementById('minsBox');
+    const startBtn = document.getElementById('startBtn');
 
-    startBtn.addEventListener('click', function(){
-      startBtn.disabled = true;
-      var end = Date.now() + TOTAL_MINUTES*60*1000;
-      #var surveyWin = window.open(SURVEY_URL, '_blank');
-      location.href = SURVEY_URL;
+    const run = document.getElementById('run');
+    const frame = document.getElementById('surveyFrame');
+    const fallback = document.getElementById('fallback');
+    const openHere = document.getElementById('openHere');
 
-      var tick = setInterval(function(){
-        var remaining = Math.ceil((end - Date.now())/1000);
-        if (remaining <= 0) {
-          remaining = 0; clearInterval(tick);
-          try { if (surveyWin && !surveyWin.closed) surveyWin.close(); } catch(e){}
-          alert('Time is up — please return to the survey and submit.');
+    const bar = document.getElementById('bar');
+    const clock = document.getElementById('clock');
+    const msg = document.getElementById('msg');
+    const overlay = document.getElementById('overlay');
+    const dismiss = document.getElementById('dismiss');
+
+    // ----------- timer logic -----------
+    function startTimer(){
+      endMs = Date.now() + TOTAL_MINUTES * 60 * 1000;
+      if (tickHandle) clearInterval(tickHandle);
+      const WARN = 60; // seconds
+      function tick(){
+        let remaining = Math.ceil((endMs - Date.now())/1000);
+        if (remaining <= 0){
+          remaining = 0;
+          clearInterval(tickHandle);
+          bar.classList.add('warn');
+          msg.textContent = 'Time is up.';
+          overlay.style.display = 'flex';
+        } else if (remaining <= WARN){
+          bar.classList.add('warn');
+          msg.textContent = 'Almost out of time — please wrap up.';
+        } else {
+          bar.classList.remove('warn');
+          msg.textContent = '';
         }
-        timerEl.textContent = fmt(remaining);
-        if (remaining <= 60) timerEl.classList.add('warn');
-      }, 250);
+        clock.textContent = fmt(remaining);
+      }
+      tickHandle = setInterval(tick, 250);
+      tick();
+    }
+
+    dismiss.addEventListener('click', () => overlay.style.display = 'none');
+
+    // ----------- load survey -----------
+    function loadSurvey(url){
+      SURVEY_URL = url.trim();
+      if (!SURVEY_URL) return alert('Missing survey URL.');
+      frame.src = SURVEY_URL;
+      run.style.display = '';
+      setup.style.display = 'none';
+      startTimer();
+
+      // If iframe is blocked, show fallback button after a short delay
+      let loaded = false;
+      frame.addEventListener('load', () => { loaded = true; }, { once:true });
+      setTimeout(() => {
+        // We can’t inspect cross-origin frame; just show fallback if nothing fired.
+        if (!loaded){
+          fallback.style.display = 'block';
+        }
+      }, 1800);
+    }
+
+    openHere.addEventListener('click', () => {
+      // Open the survey in THIS tab (same-window experience)
+      location.href = SURVEY_URL;
     });
+
+    // ----------- init -----------
+    if (urlParam){
+      urlBox.value = urlParam;
+      if (!isNaN(TOTAL_MINUTES)) minsBox.value = TOTAL_MINUTES;
+      loadSurvey(urlParam);
+    } else {
+      // manual setup mode
+      startBtn.addEventListener('click', () => {
+        const mins = parseInt(minsBox.value || '15', 10);
+        TOTAL_MINUTES = Math.max(1, isNaN(mins) ? 15 : mins);
+        loadSurvey(urlBox.value);
+      });
+      // show initial clock
+      clock.textContent = fmt(TOTAL_MINUTES*60);
+    }
   </script>
 </body>
 </html>
+
 
