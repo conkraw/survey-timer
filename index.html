@@ -18,10 +18,16 @@
            background:#111827; color:#fff; text-decoration:none; border:1px solid #111827; }
     .btn:focus { outline: 3px solid #60a5fa; outline-offset: 2px; }
     .panel { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
+
+    /* Timer view */
+    .timer-root { display:flex; align-items:center; justify-content:center; height:100vh; text-align:center; }
+    .clock { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .warn { color:#b33; }
+    .sub { margin-top: 8px; font-size: .95rem; opacity:.7; }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="intro">
     <h1>Welcome to the Pediatric Clerkship Practical Examination!</h1>
     <div class="panel">
       <p>This examination provides a unique opportunity to demonstrate your skills in biomedical knowledge, clinical reasoning, and systems-based thinking as you engage with simulated cases involving undifferentiated pediatric patients.</p>
@@ -49,54 +55,64 @@
     </div>
   </div>
 
+  <!-- Timer view injected here -->
+  <div id="timerView" style="display:none;">
+    <div class="timer-root">
+      <div>
+        <div id="clock" class="clock">60:00</div>
+        <div id="sub" class="sub">Countdown continues while your survey is open in another tab.</div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
     function fmt(s){ s=Math.max(0,s|0); const m=Math.floor(s/60), x=s%60; return m+':'+String(x).padStart(2,'0'); }
 
-    const SURVEY_URL = qs('u');            // pass REDCap link with ?u=...
-    const OPEN_HELPER = qs('helper')==='1';// add &helper=1 for proctor timer popup
+    const SURVEY_URL = qs('u');           // pass REDCap link with ?u=...
     const TOTAL_MINUTES = 60;
     const startBtn = document.getElementById('startBtn');
+    const intro = document.getElementById('intro');
+    const timerView = document.getElementById('timerView');
+    const clock = document.getElementById('clock');
+
+    let endMs = 0, tickHandle = null;
+
+    function startTimer(){
+      endMs = Date.now() + TOTAL_MINUTES*60*1000;
+      const WARN = 60;
+      function tick(){
+        let rem = Math.ceil((endMs - Date.now())/1000);
+        if(rem <= 0){ rem = 0; clearInterval(tickHandle); }
+        clock.textContent = fmt(rem);
+        if(rem <= WARN) clock.classList.add('warn');
+      }
+      tickHandle = setInterval(tick, 250); tick();
+    }
+
+    function launch(){
+      // Show timer here (this tab), open survey in a new tab/window
+      intro.style.display = 'none';
+      timerView.style.display = 'block';
+      startTimer();
+
+      const w = window.open(SURVEY_URL, '_blank');
+      if(!w){
+        // If popup blocked, tell the user to use the button
+        document.getElementById('sub').textContent = 'Popup was blocked. Please allow pop-ups and click Start again, or open the survey from the link below.';
+        const link = document.createElement('p');
+        link.innerHTML = '<a href="'+SURVEY_URL+'">Open survey</a>';
+        document.querySelector('.timer-root > div').appendChild(link);
+      }
+    }
 
     if (!SURVEY_URL) {
       startBtn.addEventListener('click', (e)=>{ e.preventDefault(); alert('Missing survey URL. Add ?u=... to this page link.'); });
     } else {
-      startBtn.addEventListener('click', (e)=> {
-        e.preventDefault();
-        if (OPEN_HELPER) openHelperPopup(TOTAL_MINUTES*60);
-        location.href = SURVEY_URL;
-      });
-    }
-
-    // Helper popup in top-left corner
-    function openHelperPopup(totalSeconds){
-      const html = `
-<!doctype html><meta charset="utf-8"><title>Timer</title>
-<style>
-  html,body{margin:0;padding:0;height:100%;width:100%;
-            display:flex;align-items:center;justify-content:center;
-            font-family:system-ui,Arial,sans-serif;background:#fff;}
-  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;}
-  .warn{color:#b33;}
-</style>
-<div id="t">${fmt(totalSeconds)}</div>
-<script>
-  function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;
-    return m+':'+String(x).padStart(2,'0')}
-  var end=Date.now()+${totalSeconds}*1000, t=document.getElementById('t'), WARN=60;
-  function tick(){
-    var rem=Math.ceil((end-Date.now())/1000);
-    if(rem<=0){rem=0;clearInterval(h);}
-    if(rem<=WARN){t.classList.add('warn');}
-    t.textContent=fmt(rem);
-  }
-  var h=setInterval(tick,250);tick();
-<\/script>`;
-      const w = window.open('', '', 'width=300,height=200,left=0,top=0');
-      if(!w) alert('Popup blocked. Allow pop-ups for this site.');
-      else { w.document.open(); w.document.write(html); w.document.close(); }
+      startBtn.addEventListener('click', (e)=>{ e.preventDefault(); launch(); });
     }
   </script>
 </body>
 </html>
+
 
