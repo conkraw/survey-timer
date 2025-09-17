@@ -2,90 +2,103 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Survey Timer (Same Tab)</title>
+  <title>Pediatric Clerkship Practical Examination</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:#111; margin:0; padding:0; }
-    .wrap { max-width:720px; margin:40px auto; padding:0 16px; text-align:center; }
-    input[type="url"], input[type="number"] { width:100%; padding:10px 12px; font-size:1rem; box-sizing:border-box; margin:6px 0 12px; }
-    button { padding:10px 16px; font-size:1rem; cursor:pointer; border-radius:8px; border:1px solid #cbd5e1; background:#111827; color:#fff; font-weight:600; }
-    .hint { opacity:.75; font-size:.9rem; margin-top:8px; }
-    label { display:block; margin:10px 0; }
+    :root { --maxw: 860px; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:#0f172a; background:#fff; }
+    .wrap { max-width: var(--maxw); margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    h2 { font-size: 1.15rem; margin: 24px 0 8px; }
+    p  { line-height: 1.55; margin: 10px 0; }
+    ul { margin: 8px 0 0 22px; }
+    li { margin: 6px 0; }
+    .muted { opacity:.8; }
+    .btn { display:inline-block; margin-top: 20px; padding: 12px 18px; font-weight:700; border-radius: 10px;
+           background:#111827; color:#fff; text-decoration:none; border:1px solid #111827; }
+    .btn:focus { outline: 3px solid #60a5fa; outline-offset: 2px; }
+    .panel { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
   </style>
 </head>
 <body>
-  <div class="wrap" id="setup">
-    <h1>Start timed survey</h1>
-    <p>Paste your REDCap survey link and set minutes. The survey will open in <strong>this tab</strong>.</p>
-    <input id="urlBox" type="url" placeholder="https://redcap.your.edu/surveys/?s=ABC123" />
-    <label>Minutes: <input id="minsBox" type="number" min="1" step="1" value="15" /></label>
-    <label><input id="helperChk" type="checkbox" /> Open a small helper window that shows the countdown while I’m in REDCap</label>
-    <button id="startBtn">Start Survey</button>
-    <p class="hint">Tip: prefill with <code>?u=...</code> and <code>&m=15</code>. Add <code>&helper=1</code> to auto-open the helper window.</p>
+  <div class="wrap">
+    <h1>Welcome to the Pediatric Clerkship Practical Examination!</h1>
+    <div class="panel">
+      <p>This examination provides a unique opportunity to demonstrate your skills in biomedical knowledge, clinical reasoning, and systems-based thinking as you engage with simulated cases involving undifferentiated pediatric patients.</p>
+
+      <p>You will be presented with prompts containing key details and asked to respond to specific questions. <strong>Please note that all answers are required.</strong> While the system will not prompt you if an answer is left blank, your responses are mandatory in order to proceed through the examination. Ensure that you fill in all required fields before moving forward (unless otherwise specified). The purpose of this summative assessment is to evaluate your ability to synthesize data, interpret findings, and apply critical thinking in clinical decision-making.</p>
+
+      <p>All essential resources, including immunization schedules and pharmacologic references, will be provided to assist you in formulating your responses. While you are welcome to take notes during the assessment, please note that these notes cannot be taken out of the exam room.</p>
+
+      <p>There are a total of <strong>SIX</strong> stations (numbered 1 to 6) in this practical examination. Each station presents a clinical case with associated questions.</p>
+
+      <p>Please note that the last station is designated as the <strong>FINAL STATION</strong> and contains a different set of questions intended to assess additional competencies.</p>
+
+      <h2>Learning Objectives</h2>
+      <ul>
+        <li>Obtain, synthesize, and interpret comprehensive medical histories for newborns, children, and adolescents in various clinical settings. (Patient Care 1.1, EPA 1)</li>
+        <li>Create an assessment, problem list, differential diagnosis, and management plan for common pediatric complaints. (Patient Care 1.2, EPA 2)</li>
+        <li>Integrate and adapt knowledge of growth and development to develop individualized pediatric care strategies that address physical, emotional, and psychosocial needs. (Patient Care 1.2)</li>
+        <li>Analyze social determinants of health, evaluate their impact on pediatric health outcomes, and formulate a plan to address these needs effectively. (Health Humanities 7.1, Systems Based Practice 6.4)</li>
+      </ul>
+
+      <p class="muted">Good luck, and let this be an opportunity to demonstrate the knowledge, skills, and professionalism you have cultivated throughout your clerkship.</p>
+
+      <a id="startBtn" class="btn" href="#">Start Survey</a>
+      <p class="muted">You will have <strong>60 minutes</strong> to complete the examination once you start.</p>
+    </div>
   </div>
 
   <script>
-    function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
-    function fmt(secs){ secs=Math.max(0,secs|0); const m=Math.floor(secs/60), s=secs%60; return m+':'+String(s).padStart(2,'0'); }
+    // --- helpers ---
+    function qs(name){ const m = location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m ? decodeURIComponent(m[1]) : ''; }
+    function fmt(s){ s=Math.max(0,s|0); const m=Math.floor(s/60), x=s%60; return m+':'+String(x).padStart(2,'0'); }
 
-    const urlParam = qs('u');
-    const minutesParam = parseInt(qs('m')||'15',10);
-    const helperParam = qs('helper');
-    let SURVEY_URL = '';
-    let TOTAL_MINUTES = isNaN(minutesParam)?15:Math.max(1,minutesParam);
-    let endMs = 0;
-
-    const urlBox = document.getElementById('urlBox');
-    const minsBox = document.getElementById('minsBox');
-    const helperChk = document.getElementById('helperChk');
+    // --- config/state ---
+    const SURVEY_URL = qs('u');            // pass the REDCap link as ?u=...
+    const OPEN_HELPER = qs('helper')==='1';// optional: add &helper=1 to show small countdown popup
+    const TOTAL_MINUTES = 60;              // fixed 60 minutes
     const startBtn = document.getElementById('startBtn');
 
-    // helper popup
-    function openHelper(){
-      const secsLeft = TOTAL_MINUTES*60;
+    if (!SURVEY_URL) {
+      startBtn.addEventListener('click', (e) => { e.preventDefault(); alert('Missing survey URL. Add ?u=... to this page link.'); });
+    } else {
+      startBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (OPEN_HELPER) openHelperPopup(TOTAL_MINUTES * 60);
+        // Redirect to REDCap in THIS tab
+        location.href = SURVEY_URL;
+      });
+    }
+
+    // Small helper countdown popup (for proctoring). Opens only when &helper=1 is present.
+    function openHelperPopup(totalSeconds){
       const html = `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
-<style>body{margin:0;font-family:system-ui,Arial} 
-.bar{padding:12px;text-align:center;font-weight:700;font-size:24px}
-.warn{background:#fff3cd;color:#7a5a00}</style>
-<div class="bar" id="bar"><span id="t">${fmt(secsLeft)}</span></div>
+<style>
+  body{margin:0;font-family:system-ui,Arial,sans-serif}
+  .bar{padding:12px 16px;text-align:center;font-weight:800;font-size:28px;border-bottom:1px solid #eee;background:#f8f9fa}
+  .warn{background:#fff3cd;color:#7a5a00}
+</style>
+<div class="bar" id="bar"><span id="t">${fmt(totalSeconds)}</span></div>
 <script>
-function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0')}
-var end = Date.now() + ${secsLeft}*1000;
-var t=document.getElementById('t'),bar=document.getElementById('bar');
-var WARN=60;
-function tick(){
-  var rem=Math.ceil((end-Date.now())/1000);
-  if(rem<=0){rem=0;clearInterval(h);bar.classList.add('warn');}
-  else if(rem<=WARN){bar.classList.add('warn');}
-  t.textContent=fmt(rem);
-}
-var h=setInterval(tick,250);tick();
+  function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0')}
+  var end = Date.now() + ${totalSeconds}*1000;
+  var t=document.getElementById('t'), bar=document.getElementById('bar'), WARN=60;
+  function tick(){
+    var rem = Math.ceil((end - Date.now())/1000);
+    if(rem<=0){rem=0;clearInterval(h);bar.classList.add('warn');}
+    else if(rem<=WARN){bar.classList.add('warn');}
+    t.textContent = fmt(rem);
+  }
+  var h=setInterval(tick,250); tick();
 <\/script>`;
-      const w = window.open('', '', 'width=260,height=120');
-      if (!w) return alert('Popup blocked. Please allow pop-ups.');
-      w.document.open(); w.document.write(html); w.document.close();
+      const w = window.open('', '', 'width=280,height=140');
+      if (!w) alert('Popup blocked. Allow pop-ups for this site to show the helper timer.');
+      else { w.document.open(); w.document.write(html); w.document.close(); }
     }
-
-    function startSurvey(){
-      TOTAL_MINUTES = Math.max(1, parseInt(minsBox.value||'15',10));
-      if (helperChk.checked) openHelper();
-      location.href = SURVEY_URL;
-    }
-
-    if (urlParam){
-      urlBox.value = urlParam;
-      minsBox.value = TOTAL_MINUTES;
-      SURVEY_URL = urlParam;
-      if (helperParam==='1') helperChk.checked = true;
-    }
-
-    startBtn.addEventListener('click', () => {
-      if (!urlBox.value) return alert('Paste your REDCap survey link.');
-      SURVEY_URL = urlBox.value.trim();
-      startSurvey();
-    });
   </script>
 </body>
 </html>
+
 
