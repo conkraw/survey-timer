@@ -5,137 +5,79 @@
   <title>Survey Timer (Same Tab)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --headerH: 64px; }
-    html, body { margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:#111; }
-    .bar { position: sticky; top:0; z-index:1000; height:var(--headerH); display:flex; align-items:center; justify-content:center; gap:12px; background:#f8f9fa; border-bottom:1px solid #e5e7eb; padding:8px 12px; font-weight:600; }
-    .warn { background:#fff3cd; color:#7a5a00; }
-    .time { font-variant-numeric: tabular-nums; font-size:1.25rem; }
-    .wrap { max-width:720px; margin:24px auto; padding:0 16px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif; color:#111; margin:0; padding:0; }
+    .wrap { max-width:720px; margin:40px auto; padding:0 16px; text-align:center; }
     input[type="url"], input[type="number"] { width:100%; padding:10px 12px; font-size:1rem; box-sizing:border-box; margin:6px 0 12px; }
     button { padding:10px 16px; font-size:1rem; cursor:pointer; border-radius:8px; border:1px solid #cbd5e1; background:#111827; color:#fff; font-weight:600; }
-    .hint { opacity:.75; font-size:.9rem; }
-    .row { margin:10px 0; }
+    .hint { opacity:.75; font-size:.9rem; margin-top:8px; }
+    label { display:block; margin:10px 0; }
   </style>
 </head>
 <body>
-  <!-- Sticky timer header (visible before redirect) -->
-  <div id="bar" class="bar" role="status" aria-live="polite">
-    <div>Time remaining:</div>
-    <div id="clock" class="time">--:--</div>
-    <div id="msg" class="hint"></div>
-  </div>
-
   <div class="wrap" id="setup">
     <h1>Start timed survey</h1>
     <p>Paste your REDCap survey link and set minutes. The survey will open in <strong>this tab</strong>.</p>
     <input id="urlBox" type="url" placeholder="https://redcap.your.edu/surveys/?s=ABC123" />
-    <div class="row">
-      <label>Minutes: <input id="minsBox" type="number" min="1" step="1" value="15" /></label>
-    </div>
-    <div class="row">
-      <label><input id="helperChk" type="checkbox" /> Open a small helper window that shows the countdown while I’m in REDCap</label>
-      <div class="hint">Useful for proctoring. Allow pop-ups if prompted.</div>
-    </div>
+    <label>Minutes: <input id="minsBox" type="number" min="1" step="1" value="15" /></label>
+    <label><input id="helperChk" type="checkbox" /> Open a small helper window that shows the countdown while I’m in REDCap</label>
     <button id="startBtn">Start Survey</button>
-    <p class="hint">Tip: prefill this page with <code>?u=...</code> and <code>&m=15</code>. Add <code>&helper=1</code> to auto-open the helper window.</p>
+    <p class="hint">Tip: prefill with <code>?u=...</code> and <code>&m=15</code>. Add <code>&helper=1</code> to auto-open the helper window.</p>
   </div>
 
   <script>
-    // --- helpers ---
     function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
-    function fmt(secs){ secs=Math.max(0,secs|0); const m=Math.floor(secs/60), s=secs%60; return m + ':' + String(s).padStart(2,'0'); }
+    function fmt(secs){ secs=Math.max(0,secs|0); const m=Math.floor(secs/60), s=secs%60; return m+':'+String(s).padStart(2,'0'); }
 
-    // --- params/state ---
     const urlParam = qs('u');
     const minutesParam = parseInt(qs('m')||'15',10);
     const helperParam = qs('helper');
     let SURVEY_URL = '';
     let TOTAL_MINUTES = isNaN(minutesParam)?15:Math.max(1,minutesParam);
-    let endMs = 0, tickHandle = null, helperWin = null;
+    let endMs = 0;
 
-    // --- elements ---
-    const setup = document.getElementById('setup');
     const urlBox = document.getElementById('urlBox');
     const minsBox = document.getElementById('minsBox');
     const helperChk = document.getElementById('helperChk');
     const startBtn = document.getElementById('startBtn');
-    const bar = document.getElementById('bar');
-    const clock = document.getElementById('clock');
-    const msg = document.getElementById('msg');
 
-    // --- timer before redirect (for a brief preview / proctoring start cue) ---
-    function startPreviewTimer(){
-      endMs = Date.now() + TOTAL_MINUTES*60*1000;
-      const WARN = 60;
-      function tick(){
-        let remaining = Math.ceil((endMs - Date.now())/1000);
-        if (remaining <= 0){ remaining = 0; clearInterval(tickHandle); bar.classList.add('warn'); msg.textContent='Time is up.'; }
-        else if (remaining <= WARN){ bar.classList.add('warn'); msg.textContent='Almost out of time.'; }
-        else { bar.classList.remove('warn'); msg.textContent=''; }
-        clock.textContent = fmt(remaining);
-      }
-      if (tickHandle) clearInterval(tickHandle);
-      tickHandle = setInterval(tick, 250); tick();
-    }
-
-    // --- open small helper countdown window (optional) ---
+    // helper popup
     function openHelper(){
-      // Make a tiny self-contained page as a data URL so it works anywhere
-      const secsLeft = Math.ceil((endMs - Date.now())/1000);
+      const secsLeft = TOTAL_MINUTES*60;
       const html = `
-<!doctype html><meta charset="utf-8">
-<title>Timer</title>
-<style>
-  html,body{margin:0;padding:0;font-family:system-ui,Arial,sans-serif}
-  .bar{padding:10px 14px;border-bottom:1px solid #eee;background:#f8f9fa;font-weight:700}
-  .t{font-variant-numeric:tabular-nums;font-size:32px}
-  .warn{background:#fff3cd;color:#7a5a00}
-  .wrap{padding:14px}
-</style>
-<div class="bar" id="bar">Time remaining: <span id="t" class="t">${fmt(secsLeft)}</span></div>
-<div class="wrap">Leave this window visible while you complete the survey.</div>
+<!doctype html><meta charset="utf-8"><title>Timer</title>
+<style>body{margin:0;font-family:system-ui,Arial} 
+.bar{padding:12px;text-align:center;font-weight:700;font-size:24px}
+.warn{background:#fff3cd;color:#7a5a00}</style>
+<div class="bar" id="bar"><span id="t">${fmt(secsLeft)}</span></div>
 <script>
-  function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0')}
-  var end = Date.now() + ${secsLeft}*1000;
-  var bar = document.getElementById('bar'), t = document.getElementById('t');
-  var WARN=60;
-  function tick(){
-    var rem = Math.ceil((end - Date.now())/1000);
-    if(rem<=0){rem=0; clearInterval(h); bar.classList.add('warn');}
-    else if(rem<=WARN){bar.classList.add('warn');}
-    t.textContent = fmt(rem);
-  }
-  var h = setInterval(tick,250); tick();
+function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0')}
+var end = Date.now() + ${secsLeft}*1000;
+var t=document.getElementById('t'),bar=document.getElementById('bar');
+var WARN=60;
+function tick(){
+  var rem=Math.ceil((end-Date.now())/1000);
+  if(rem<=0){rem=0;clearInterval(h);bar.classList.add('warn');}
+  else if(rem<=WARN){bar.classList.add('warn');}
+  t.textContent=fmt(rem);
+}
+var h=setInterval(tick,250);tick();
 <\/script>`;
-      const w = window.open('', '', 'width=260,height=160');
-      if (!w) return alert('Popup blocked. Please allow pop-ups for this site to show the helper timer.');
+      const w = window.open('', '', 'width=260,height=120');
+      if (!w) return alert('Popup blocked. Please allow pop-ups.');
       w.document.open(); w.document.write(html); w.document.close();
-      return w;
     }
 
-    // --- start button: compute end, maybe open helper, then redirect same tab ---
     function startSurvey(){
-      const mins = parseInt(minsBox.value||'15',10);
-      TOTAL_MINUTES = Math.max(1, isNaN(mins)?15:mins);
-      endMs = Date.now() + TOTAL_MINUTES*60*1000;
-
-      if (helperChk.checked) helperWin = openHelper();
-
-      // Redirect to REDCap in THIS tab
+      TOTAL_MINUTES = Math.max(1, parseInt(minsBox.value||'15',10));
+      if (helperChk.checked) openHelper();
       location.href = SURVEY_URL;
     }
 
-    // --- init ---
     if (urlParam){
       urlBox.value = urlParam;
-      if (!isNaN(TOTAL_MINUTES)) minsBox.value = TOTAL_MINUTES;
+      minsBox.value = TOTAL_MINUTES;
       SURVEY_URL = urlParam;
-      if (helperParam === '1') helperChk.checked = true;
-      startPreviewTimer(); // shows the clock so proctor can see the start state
-    }
-    else {
-      // manual mode
-      clock.textContent = fmt(TOTAL_MINUTES*60);
+      if (helperParam==='1') helperChk.checked = true;
     }
 
     startBtn.addEventListener('click', () => {
@@ -146,5 +88,4 @@
   </script>
 </body>
 </html>
-
 
