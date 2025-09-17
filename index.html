@@ -44,12 +44,11 @@
         <li>Analyze social determinants of health, evaluate their impact on pediatric health outcomes, and formulate a plan to address these needs effectively. (Health Humanities 7.1, Systems Based Practice 6.4)</li>
       </ul>
 
-      <p class="muted">Good luck, and let this be an opportunity to demonstrate the knowledge, skills, and professionalism you have cultivated throughout your clerkship.</p>
+      <p class="muted"><strong>You have 60 minutes from when you click Start Exam. The countdown timer is your exam clock. Please note that REDCap may not match the timer exactly; the timer is the official cutoff. Depending on network capabilities, a small grace period may be available, but it is not guaranteed.</strong></p>
 
-      <a id="startBtn" class="btn" href="#">Start Survey</a>
-      <p class="muted">You will have <strong>60 minutes</strong> to complete the examination once you start.</p>
+      <a id="startBtn" class="btn" href="#">Start Exam</a>
       <div id="fallback" class="fallback">
-        <p><strong>Pop-ups were blocked.</strong> Please allow pop-ups for this site and click Start again, or open the survey directly: <a id="directLink" href="#">Open survey</a></p>
+        <p><strong>Pop-ups were blocked.</strong> Please allow pop-ups for this site and click Start again, or open the survey directly: <a id="directLink" href="#">Open exam</a></p>
       </div>
     </div>
   </div>
@@ -59,7 +58,7 @@
     function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
     const SURVEY_URL = qs('u');
-    const TOTAL_MINUTES = 1;
+    const TOTAL_MINUTES = 65; // timer set to 65 for grace period
     const startBtn = document.getElementById('startBtn');
     const fallback = document.getElementById('fallback');
     const directLink = document.getElementById('directLink');
@@ -134,7 +133,7 @@
     if(rem<=0){
       rem=0; clearInterval(h);
       document.title='Time is up'; document.getElementById('status').textContent='Time is up.';
-      window.close(); // auto-close at 0
+      window.close();
     }
     t.textContent=fmt(rem);
     if(rem<=WARN){ t.classList.add('warn'); beep(); }
@@ -167,5 +166,6 @@
   </script>
 </body>
 </html>
+
 
 
