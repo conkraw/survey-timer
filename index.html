@@ -26,7 +26,25 @@
   <div class="wrap">
     <h1>Welcome to the Pediatric Clerkship Practical Examination!</h1>
     <div class="panel">
-      <p>… exam instructions …</p>
+      <p>This examination provides a unique opportunity to demonstrate your skills in biomedical knowledge, clinical reasoning, and systems-based thinking as you engage with simulated cases involving undifferentiated pediatric patients.</p>
+
+      <p>You will be presented with prompts containing key details and asked to respond to specific questions. <strong>Please note that all answers are required.</strong> While the system will not prompt you if an answer is left blank, your responses are mandatory in order to proceed through the examination. Ensure that you fill in all required fields before moving forward (unless otherwise specified). The purpose of this summative assessment is to evaluate your ability to synthesize data, interpret findings, and apply critical thinking in clinical decision-making.</p>
+
+      <p>All essential resources, including immunization schedules and pharmacologic references, will be provided to assist you in formulating your responses. While you are welcome to take notes during the assessment, please note that these notes cannot be taken out of the exam room.</p>
+
+      <p>There are a total of <strong>SIX</strong> stations (numbered 1 to 6) in this practical examination. Each station presents a clinical case with associated questions.</p>
+
+      <p>Please note that the last station is designated as the <strong>FINAL STATION</strong> and contains a different set of questions intended to assess additional competencies.</p>
+
+      <h2>Learning Objectives</h2>
+      <ul>
+        <li>Obtain, synthesize, and interpret comprehensive medical histories for newborns, children, and adolescents in various clinical settings. (Patient Care 1.1, EPA 1)</li>
+        <li>Create an assessment, problem list, differential diagnosis, and management plan for common pediatric complaints. (Patient Care 1.2, EPA 2)</li>
+        <li>Integrate and adapt knowledge of growth and development to develop individualized pediatric care strategies that address physical, emotional, and psychosocial needs. (Patient Care 1.2)</li>
+        <li>Analyze social determinants of health, evaluate their impact on pediatric health outcomes, and formulate a plan to address these needs effectively. (Health Humanities 7.1, Systems Based Practice 6.4)</li>
+      </ul>
+
+      <p class="muted">Good luck, and let this be an opportunity to demonstrate the knowledge, skills, and professionalism you have cultivated throughout your clerkship.</p>
 
       <a id="startBtn" class="btn" href="#">Start Survey</a>
       <p class="muted">You will have <strong>60 minutes</strong> to complete the examination once you start.</p>
@@ -37,12 +55,11 @@
   </div>
 
   <script>
-    // --- Helpers ---
     function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
     function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
     const SURVEY_URL = qs('u');
-    const TOTAL_MINUTES = 60;
+    const TOTAL_MINUTES = 1;
     const startBtn = document.getElementById('startBtn');
     const fallback = document.getElementById('fallback');
     const directLink = document.getElementById('directLink');
