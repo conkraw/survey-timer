@@ -72,7 +72,8 @@
     startBtn.addEventListener('click', function(){
       startBtn.disabled = true;
       var end = Date.now() + TOTAL_MINUTES*60*1000;
-      var surveyWin = window.open(SURVEY_URL, '_blank');
+      #var surveyWin = window.open(SURVEY_URL, '_blank');
+      location.href = SURVEY_URL;
 
       var tick = setInterval(function(){
         var remaining = Math.ceil((end - Date.now())/1000);
