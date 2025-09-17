@@ -50,51 +50,50 @@
   </div>
 
   <script>
-    // --- helpers ---
-    function qs(name){ const m = location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m ? decodeURIComponent(m[1]) : ''; }
+    function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
     function fmt(s){ s=Math.max(0,s|0); const m=Math.floor(s/60), x=s%60; return m+':'+String(x).padStart(2,'0'); }
 
-    // --- config/state ---
-    const SURVEY_URL = qs('u');            // pass the REDCap link as ?u=...
-    const OPEN_HELPER = qs('helper')==='1';// optional: add &helper=1 to show small countdown popup
-    const TOTAL_MINUTES = 60;              // fixed 60 minutes
+    const SURVEY_URL = qs('u');            // pass REDCap link with ?u=...
+    const OPEN_HELPER = qs('helper')==='1';// add &helper=1 for proctor timer popup
+    const TOTAL_MINUTES = 60;
     const startBtn = document.getElementById('startBtn');
 
     if (!SURVEY_URL) {
-      startBtn.addEventListener('click', (e) => { e.preventDefault(); alert('Missing survey URL. Add ?u=... to this page link.'); });
+      startBtn.addEventListener('click', (e)=>{ e.preventDefault(); alert('Missing survey URL. Add ?u=... to this page link.'); });
     } else {
-      startBtn.addEventListener('click', (e) => {
+      startBtn.addEventListener('click', (e)=> {
         e.preventDefault();
-        if (OPEN_HELPER) openHelperPopup(TOTAL_MINUTES * 60);
-        // Redirect to REDCap in THIS tab
+        if (OPEN_HELPER) openHelperPopup(TOTAL_MINUTES*60);
         location.href = SURVEY_URL;
       });
     }
 
-    // Small helper countdown popup (for proctoring). Opens only when &helper=1 is present.
+    // Clean centered helper popup
     function openHelperPopup(totalSeconds){
       const html = `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
 <style>
-  body{margin:0;font-family:system-ui,Arial,sans-serif}
-  .bar{padding:12px 16px;text-align:center;font-weight:800;font-size:28px;border-bottom:1px solid #eee;background:#f8f9fa}
-  .warn{background:#fff3cd;color:#7a5a00}
+  html,body{margin:0;padding:0;height:100%;width:100%;
+            display:flex;align-items:center;justify-content:center;
+            font-family:system-ui,Arial,sans-serif;background:#fff;}
+  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .warn{color:#b33;}
 </style>
-<div class="bar" id="bar"><span id="t">${fmt(totalSeconds)}</span></div>
+<div id="t">${fmt(totalSeconds)}</div>
 <script>
-  function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0')}
-  var end = Date.now() + ${totalSeconds}*1000;
-  var t=document.getElementById('t'), bar=document.getElementById('bar'), WARN=60;
+  function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),x=s%60;
+    return m+':'+String(x).padStart(2,'0')}
+  var end=Date.now()+${totalSeconds}*1000, t=document.getElementById('t'), WARN=60;
   function tick(){
-    var rem = Math.ceil((end - Date.now())/1000);
-    if(rem<=0){rem=0;clearInterval(h);bar.classList.add('warn');}
-    else if(rem<=WARN){bar.classList.add('warn');}
-    t.textContent = fmt(rem);
+    var rem=Math.ceil((end-Date.now())/1000);
+    if(rem<=0){rem=0;clearInterval(h);}
+    if(rem<=WARN){t.classList.add('warn');}
+    t.textContent=fmt(rem);
   }
-  var h=setInterval(tick,250); tick();
+  var h=setInterval(tick,250);tick();
 <\/script>`;
-      const w = window.open('', '', 'width=280,height=140');
-      if (!w) alert('Popup blocked. Allow pop-ups for this site to show the helper timer.');
+      const w = window.open('', '', 'width=300,height=200');
+      if(!w) alert('Popup blocked. Allow pop-ups for this site.');
       else { w.document.open(); w.document.write(html); w.document.close(); }
     }
   </script>
