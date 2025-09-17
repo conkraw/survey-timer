@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Survey Timer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; text-align:center; padding:40px; max-width:680px; margin:0 auto; }
+    #timer { font-size: 3rem; margin: 16px 0 24px; }
+    #startBtn { padding: 10px 18px; font-size:1rem; cursor:pointer; }
+    .warn { color: #b33; }
+  </style>
+</head>
+<body>
+  <h1>Please complete the survey</h1>
+  <p>You will have <strong id="mins">15</strong> minutes to finish.</p>
+  <div id="timer">15:00</div>
+  <button id="startBtn">Start Survey</button>
+  <p id="note">The survey will open in a new tab.</p>
+
+  <script>
+    // === CONFIG: change this line to your REDCap link ===
+    var SURVEY_URL = 'https://YOUR-REDCAP-DOMAIN/surveys/?s=PUBLIC_HASH';
+    var TOTAL_MINUTES = 15; // set your limit
+    // ================================================
+
+    var timerEl = document.getElementById('timer');
+    var minsEl  = document.getElementById('mins');
+    var startBtn = document.getElementById('startBtn');
+
+    function fmt(s){ var m=Math.floor(s/60), ss=s%60; return m+':'+String(ss).padStart(2,'0'); }
+
+    startBtn.addEventListener('click', function(){
+      startBtn.disabled = true;
+      var end = Date.now() + TOTAL_MINUTES*60*1000;
+      var surveyWin = window.open(SURVEY_URL, '_blank');
+
+      var tick = setInterval(function(){
+        var remaining = Math.ceil((end - Date.now())/1000);
+        if (remaining <= 0) {
+          remaining = 0;
+          clearInterval(tick);
+          try { if (surveyWin && !surveyWin.closed) surveyWin.close(); } catch(e){}
+          alert('Time is up — please return to the survey and submit.');
+        }
+        timerEl.textContent = fmt(remaining);
+        if (remaining <= 60) timerEl.classList.add('warn');
+      }, 250);
+
+      minsEl.textContent = TOTAL_MINUTES;
+    });
+  </script>
+</body>
+</html>
