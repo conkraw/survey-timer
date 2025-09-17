@@ -26,25 +26,7 @@
   <div class="wrap">
     <h1>Welcome to the Pediatric Clerkship Practical Examination!</h1>
     <div class="panel">
-      <p>This examination provides a unique opportunity to demonstrate your skills in biomedical knowledge, clinical reasoning, and systems-based thinking as you engage with simulated cases involving undifferentiated pediatric patients.</p>
-
-      <p>You will be presented with prompts containing key details and asked to respond to specific questions. <strong>Please note that all answers are required.</strong> While the system will not prompt you if an answer is left blank, your responses are mandatory in order to proceed through the examination. Ensure that you fill in all required fields before moving forward (unless otherwise specified). The purpose of this summative assessment is to evaluate your ability to synthesize data, interpret findings, and apply critical thinking in clinical decision-making.</p>
-
-      <p>All essential resources, including immunization schedules and pharmacologic references, will be provided to assist you in formulating your responses. While you are welcome to take notes during the assessment, please note that these notes cannot be taken out of the exam room.</p>
-
-      <p>There are a total of <strong>SIX</strong> stations (numbered 1 to 6) in this practical examination. Each station presents a clinical case with associated questions.</p>
-
-      <p>Please note that the last station is designated as the <strong>FINAL STATION</strong> and contains a different set of questions intended to assess additional competencies.</p>
-
-      <h2>Learning Objectives</h2>
-      <ul>
-        <li>Obtain, synthesize, and interpret comprehensive medical histories for newborns, children, and adolescents in various clinical settings. (Patient Care 1.1, EPA 1)</li>
-        <li>Create an assessment, problem list, differential diagnosis, and management plan for common pediatric complaints. (Patient Care 1.2, EPA 2)</li>
-        <li>Integrate and adapt knowledge of growth and development to develop individualized pediatric care strategies that address physical, emotional, and psychosocial needs. (Patient Care 1.2)</li>
-        <li>Analyze social determinants of health, evaluate their impact on pediatric health outcomes, and formulate a plan to address these needs effectively. (Health Humanities 7.1, Systems Based Practice 6.4)</li>
-      </ul>
-
-      <p class="muted">Good luck, and let this be an opportunity to demonstrate the knowledge, skills, and professionalism you have cultivated throughout your clerkship.</p>
+      <p>… exam instructions …</p>
 
       <a id="startBtn" class="btn" href="#">Start Survey</a>
       <p class="muted">You will have <strong>60 minutes</strong> to complete the examination once you start.</p>
@@ -59,9 +41,8 @@
     function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
     function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
-    // --- Config ---
-    const SURVEY_URL = qs('u');     // pass REDCap link with ?u=...
-    const TOTAL_MINUTES = 60;       // fixed time
+    const SURVEY_URL = qs('u');
+    const TOTAL_MINUTES = 60;
     const startBtn = document.getElementById('startBtn');
     const fallback = document.getElementById('fallback');
     const directLink = document.getElementById('directLink');
@@ -76,40 +57,28 @@
       });
     }
 
-    // --- Open timer (small, top-left) + survey (sized next to it) ---
     function launchSideBySide(){
-      // Available screen area (excludes OS taskbars, etc.)
       const aw = window.screen.availWidth || window.innerWidth;
       const ah = window.screen.availHeight || window.innerHeight;
 
-      // Timer window: fixed 300x200 at (0,0)
       const tW = 300, tH = 200, tL = 0, tT = 0;
-
-      // Survey window: fill remaining width to the right of the timer, full height
-      const sL = tW + 20;                        // small gap
-      const sT = 0;
-      const sW = clamp(aw - sL, 640, aw);        // at least 640px wide
+      const sL = tW + 20, sT = 0;
+      const sW = clamp(aw - sL, 640, aw);
       const sH = clamp(ah, 480, ah);
 
-      // Open timer first
       const timerWin = window.open('', '', `width=${tW},height=${tH},left=${tL},top=${tT}`);
-      // Open survey window next
       const surveyWin = window.open(SURVEY_URL, 'survey',
         `width=${sW},height=${sH},left=${sL},top=${sT},resizable=yes,scrollbars=yes`);
 
-      // If either popup blocked, show fallback
       if (!timerWin || !surveyWin) {
         fallback.style.display = 'block';
         return;
       }
-
-      // Write timer content
       timerWin.document.open();
       timerWin.document.write(timerHTML(TOTAL_MINUTES*60));
       timerWin.document.close();
     }
 
-    // --- Timer popup HTML with nudges ---
     function timerHTML(totalSeconds){
       return `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
@@ -123,7 +92,7 @@
   .footer{padding:6px 10px;font-size:11px;color:#555;border-top:1px solid #eee;}
 </style>
 <div class="wrap">
-  <div class="banner" id="banner">⚠️ Keep this timer visible for the entire exam. Do not close this window.</div>
+  <div class="banner">⚠️ Keep this timer visible for the entire exam. Do not close this window.</div>
   <div class="center"><div id="t">--:--</div></div>
   <div class="footer" id="status">Timer running…</div>
 </div>
@@ -133,38 +102,49 @@
   var baseTitle='Timer', flash=false, flashId=null;
   document.title=baseTitle+' ('+fmt(total)+')';
 
+  function beep(){
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      const osc=ctx.createOscillator(); osc.type='sine'; osc.frequency.value=880;
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.1,ctx.currentTime);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime+0.2);
+    }catch(e){}
+  }
+
   function tick(){
     var rem=Math.ceil((end-Date.now())/1000);
-    if(rem<=0){rem=0;clearInterval(h);document.title='Time is up';document.getElementById('status').textContent='Time is up.';}
+    if(rem<=0){
+      rem=0; clearInterval(h);
+      document.title='Time is up'; document.getElementById('status').textContent='Time is up.';
+      window.close(); // auto-close at 0
+    }
     t.textContent=fmt(rem);
-    if(rem<=WARN){t.classList.add('warn');}
+    if(rem<=WARN){ t.classList.add('warn'); beep(); }
     if(!flash) document.title=baseTitle+' ('+fmt(rem)+')';
   }
-  var h=setInterval(tick,250); tick();
+  var h=setInterval(tick,1000); tick();
 
-  // Warn if user tries to close/refresh this popup
-  window.addEventListener('beforeunload', function(e){
+  window.addEventListener('beforeunload',function(e){
     e.preventDefault(); e.returnValue='Closing this timer will end your countdown!';
   });
-
-  // Flash title if popup loses focus
   function startFlash(){
     if(flashId) return;
     flash=true;
     var on=true;
     flashId=setInterval(function(){
-      document.title = on ? '⏰ RETURN TO TIMER' : baseTitle;
+      document.title=on?'⏰ RETURN TO TIMER':baseTitle;
       on=!on;
-    }, 800);
+    },800);
     document.getElementById('status').textContent='Timer running (background)…';
   }
   function stopFlash(){
-    if(flashId){ clearInterval(flashId); flashId=null; }
+    if(flashId){clearInterval(flashId);flashId=null;}
     flash=false;
     document.getElementById('status').textContent='Timer running…';
   }
-  window.addEventListener('blur', startFlash);
-  window.addEventListener('focus', stopFlash);
+  window.addEventListener('blur',startFlash);
+  window.addEventListener('focus',stopFlash);
 <\/script>`;
     }
   </script>
