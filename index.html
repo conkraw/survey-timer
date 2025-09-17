@@ -68,13 +68,15 @@
       });
     }
 
-    // Clean centered helper popup
+    // Helper popup in top-left corner
     function openHelperPopup(totalSeconds){
       const html = `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
 <style>
-  html,body{margin:0;padding:0;font-family:system-ui,Arial,sans-serif;background:#fff;}
-  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;margin:10px;}
+  html,body{margin:0;padding:0;height:100%;width:100%;
+            display:flex;align-items:center;justify-content:center;
+            font-family:system-ui,Arial,sans-serif;background:#fff;}
+  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;}
   .warn{color:#b33;}
 </style>
 <div id="t">${fmt(totalSeconds)}</div>
@@ -90,12 +92,11 @@
   }
   var h=setInterval(tick,250);tick();
 <\/script>`;
-      const w = window.open('', '', 'width=300,height=200');
+      const w = window.open('', '', 'width=300,height=200,left=0,top=0');
       if(!w) alert('Popup blocked. Allow pop-ups for this site.');
       else { w.document.open(); w.document.write(html); w.document.close(); }
     }
   </script>
 </body>
 </html>
-
 
