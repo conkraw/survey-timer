@@ -73,10 +73,8 @@
       const html = `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
 <style>
-  html,body{margin:0;padding:0;height:100%;width:100%;
-            display:flex;align-items:center;justify-content:center;
-            font-family:system-ui,Arial,sans-serif;background:#fff;}
-  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;}
+  html,body{margin:0;padding:0;font-family:system-ui,Arial,sans-serif;background:#fff;}
+  #t{font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;margin:10px;}
   .warn{color:#b33;}
 </style>
 <div id="t">${fmt(totalSeconds)}</div>
