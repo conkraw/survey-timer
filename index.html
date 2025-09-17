@@ -18,6 +18,8 @@
            background:#111827; color:#fff; text-decoration:none; border:1px solid #111827; }
     .btn:focus { outline: 3px solid #60a5fa; outline-offset: 2px; }
     .panel { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:18px; }
+    .fallback { display:none; margin-top:14px; }
+    .fallback a { color:#0b57d0; }
   </style>
 </head>
 <body>
@@ -46,31 +48,70 @@
 
       <a id="startBtn" class="btn" href="#">Start Survey</a>
       <p class="muted">You will have <strong>60 minutes</strong> to complete the examination once you start.</p>
+      <div id="fallback" class="fallback">
+        <p><strong>Pop-ups were blocked.</strong> Please allow pop-ups for this site and click Start again, or open the survey directly: <a id="directLink" href="#">Open survey</a></p>
+      </div>
     </div>
   </div>
 
   <script>
     // --- Helpers ---
     function qs(name){ const m=location.search.match(new RegExp('[?&]'+name+'=([^&]+)')); return m?decodeURIComponent(m[1]):''; }
-    function fmt(s){ s=Math.max(0,s|0); const m=Math.floor(s/60), x=s%60; return m+':'+String(x).padStart(2,'0'); }
+    function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
-    const SURVEY_URL = qs('u');           // pass REDCap link with ?u=...
-    const TOTAL_MINUTES = 60;
+    // --- Config ---
+    const SURVEY_URL = qs('u');     // pass REDCap link with ?u=...
+    const TOTAL_MINUTES = 60;       // fixed time
     const startBtn = document.getElementById('startBtn');
+    const fallback = document.getElementById('fallback');
+    const directLink = document.getElementById('directLink');
 
     if (!SURVEY_URL) {
       startBtn.addEventListener('click', e=>{ e.preventDefault(); alert('Missing survey URL. Add ?u=... to this page link.'); });
     } else {
+      directLink.href = SURVEY_URL;
       startBtn.addEventListener('click', e=>{
         e.preventDefault();
-        openHelperPopup(TOTAL_MINUTES*60); // open countdown popup
-        location.href = SURVEY_URL;        // redirect this tab to survey
+        launchSideBySide();
       });
     }
 
-    // --- Helper popup with warnings ---
-    function openHelperPopup(totalSeconds){
-      const html = `
+    // --- Open timer (small, top-left) + survey (sized next to it) ---
+    function launchSideBySide(){
+      // Available screen area (excludes OS taskbars, etc.)
+      const aw = window.screen.availWidth || window.innerWidth;
+      const ah = window.screen.availHeight || window.innerHeight;
+
+      // Timer window: fixed 300x200 at (0,0)
+      const tW = 300, tH = 200, tL = 0, tT = 0;
+
+      // Survey window: fill remaining width to the right of the timer, full height
+      const sL = tW + 20;                        // small gap
+      const sT = 0;
+      const sW = clamp(aw - sL, 640, aw);        // at least 640px wide
+      const sH = clamp(ah, 480, ah);
+
+      // Open timer first
+      const timerWin = window.open('', '', `width=${tW},height=${tH},left=${tL},top=${tT}`);
+      // Open survey window next
+      const surveyWin = window.open(SURVEY_URL, 'survey',
+        `width=${sW},height=${sH},left=${sL},top=${sT},resizable=yes,scrollbars=yes`);
+
+      // If either popup blocked, show fallback
+      if (!timerWin || !surveyWin) {
+        fallback.style.display = 'block';
+        return;
+      }
+
+      // Write timer content
+      timerWin.document.open();
+      timerWin.document.write(timerHTML(TOTAL_MINUTES*60));
+      timerWin.document.close();
+    }
+
+    // --- Timer popup HTML with nudges ---
+    function timerHTML(totalSeconds){
+      return `
 <!doctype html><meta charset="utf-8"><title>Timer</title>
 <style>
   html,body{margin:0;padding:0;height:100%;width:100%;font-family:system-ui,Arial,sans-serif;background:#fff;}
@@ -125,9 +166,6 @@
   window.addEventListener('blur', startFlash);
   window.addEventListener('focus', stopFlash);
 <\/script>`;
-      const w = window.open('', '', 'width=300,height=200,left=0,top=0');
-      if(!w) alert('Popup blocked. Allow pop-ups for this site.');
-      else { w.document.open(); w.document.write(html); w.document.close(); }
     }
   </script>
 </body>
